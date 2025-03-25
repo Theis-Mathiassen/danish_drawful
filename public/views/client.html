@@ -26,122 +26,57 @@
             max-height: 66.66vh;
             aspect-ratio: 5 / 3;
         }
+
+        /* Styles for the login form */
+        #login-form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack form elements vertically */
+            align-items: center; /* Center items horizontally */
+            width: 95%;
+            max-width: 300px; /* Maximum width for the form */
+        }
+        #login-form input {
+            padding: 10px;
+            margin: 5px 0;
+            width: 100%; /* Make input fields take full width of form */
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box; /* Include padding and border in element's total width and height */
+        }
+        #login-form button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%; /* Make button take full width of form */
+        }
+        #login-form button:hover {
+            background-color: #45a049;
+        }
+        #login-form h2 {
+            margin-bottom: 15px;
+            text-align: center; /* Center the heading */
+        }
+        .hidden {
+            display: none;
+            display: none !important; /* to make sure it will be hidden */
+            flex-direction: none !important; /* Remove flexbox layout */
+            align-items: none !important;
+        }
+    </style>
     </style>
 </head>
 <body>
-    <h2 id="title"></h2>
-    <canvas id="myCanvas"></canvas>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const canvas = document.getElementById('myCanvas');
-        const title = document.getElementById('title');
-        const ctx = canvas.getContext('2d');
-
-        // Adjust canvas size on initial load and resize
-        function resizeCanvas() {
-            const containerWidth = document.body.clientWidth * 0.95; // 95% of body width
-            const maxWidth = 500;
-            const canvasWidth = Math.min(containerWidth, maxWidth);
-            const canvasHeight = window.innerHeight * 0.6666; // 2/3 of window height
-            const maxCanvasHeight = window.innerHeight * 0.6666;
-
-            canvas.style.width = `${canvasWidth}px`;
-            canvas.style.height = `${canvasHeight}px`;
-
-            // Update the canvas's actual dimensions
-            canvas.width = canvasWidth;
-            canvas.height = canvasHeight;
-        }
-
-        resizeCanvas(); // Initial resize
-        window.addEventListener('resize', resizeCanvas); // Resize on window resize
-
-
-
-        // Drawing setup
-        let drawing = false;
-        let lastX = 0;
-        let lastY = 0;
-
-        function getTouchPos(canvasDom, touchEvent) {
-            const rect = canvasDom.getBoundingClientRect();
-            return {
-                x: touchEvent.touches[0].clientX - rect.left,
-                y: touchEvent.touches[0].clientY - rect.top
-            };
-        }
-
-        function draw(x, y) {
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);  // Start from the previous point
-            ctx.lineTo(x, y);        // Draw a line to the current point
-            ctx.lineWidth = 5;       // Set line thickness
-            ctx.strokeStyle = 'black'; // Set line color
-            ctx.lineCap = 'round';  // Rounded line ends
-            ctx.stroke();          // Draw the line
-
-            lastX = x;            // Update lastX and lastY
-            lastY = y;
-            sendCanvasData();
-        }
-
-        function sendCanvasData() {
-            const dataURL = canvas.toDataURL();
-            socket.emit('canvasUpdate', dataURL);
-        }
-
-        // Mouse event listeners
-        canvas.addEventListener('mousedown', (e) => {
-            drawing = true;
-            lastX = e.offsetX;  // Store starting point
-            lastY = e.offsetY;
-            draw(e.offsetX, e.offsetY);
-        });
-
-        canvas.addEventListener('mousemove', (e) => {
-            if (!drawing) return;
-            const x = e.offsetX;
-            const y = e.offsetY;
-            draw(x, y);
-        });
-
-        canvas.addEventListener('mouseup', () => {
-            drawing = false;
-        });
-
-        // Touch event listeners
-        canvas.addEventListener('touchstart', (e) => {
-            drawing = true;
-            e.preventDefault(); // Prevents scrolling
-            const touchPos = getTouchPos(canvas, e);
-            lastX = touchPos.x;
-            lastY = touchPos.y;
-            draw(touchPos.x, touchPos.y);
-        });
-
-        canvas.addEventListener('touchmove', (e) => {
-            if (!drawing) return;
-            e.preventDefault(); // Prevent scrolling
-            const touchPos = getTouchPos(canvas, e);
-            draw(touchPos.x, touchPos.y);
-        });
-
-        canvas.addEventListener('touchend', () => {
-            drawing = false;
-        });
-
-        socket.on('timeUp', () => {
-            alert('Time is up!');
-        });
-        socket.on('reset', () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        });
-        socket.on('new_round', (text, time) => {
-            title.textContent = 'Du skal tegne: ' + text;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        });
-    </script>
+    <script src="/js/client.js"></script>
 </body>
 </html>

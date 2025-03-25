@@ -84,6 +84,7 @@
         socket.on('connect', () => {
             clientSocketId = socket.id;
             console.log("Client connected with ID:", clientSocketId);
+            socket.emit('host_connection');
         });
 
         socket.on('timeUp', () => {

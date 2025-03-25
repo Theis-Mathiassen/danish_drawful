@@ -7,6 +7,8 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
+app.use(express.static('public'))
+
 
 // Serve the HTML file
 app.get('/', (req, res) => {
@@ -18,8 +20,9 @@ app.get('/host', (req, res) => {
     res.sendFile(path.join(__dirname, './public/views/host.html'));
 });
 
-const clientCanvasData = {}; // Store canvas data for each client using socket.id as key
-const socket_ids = []
+let clientCanvasData = {};    // Store canvas data for each client using socket.id as key
+let user_names = []           // Store user name for each client using socket.id as key
+let socket_ids = []
 
 const draw_prompts = [
     "En sovende kat drømmer en sommerfugls flugt.",
@@ -204,15 +207,32 @@ io.on('connection', (socket) => {
     console.log('A client connected:', socket.id);
     clientCanvasData[socket.id] = []; // Initialize an array for this client's data
     socket_ids.push(socket.id)
+    socket.on('submitName', (user_name) => {
+        user_names[socket.id] = user_name;
+    });
     socket.on('canvasUpdate', (data) => {
         // Store the received canvas data
-        console.log('Canvas Saved')
         clientCanvasData[socket.id] = data;
     });
+
+    socket.on('host_connection', () => {
+        delete clientCanvasData[socket.id]
+        const index = socket_ids.indexOf(''+socket.id);
+        if (index > -1) { // only splice array when item is found
+            socket_ids = socket_ids.splice(index, 1); // 2nd parameter means remove one item only
+        }
+        
+        console.log(clientCanvasData)
+    })
 
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
         delete clientCanvasData[socket.id]; // Remove client's data when they disconnect
+        const index = socket_ids.indexOf(''+socket.id);
+        if (index > -1) { // only splice array when item is found
+            socket_ids = socket_ids.splice(index, 1); // 2nd parameter means remove one item only
+        }
+        delete user_names[socket.id]
     });
 });
 
