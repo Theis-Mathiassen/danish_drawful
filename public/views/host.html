@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drawful-Inspired Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Basic styles for the canvas */
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: sans-serif;
+            background-color: #f0f0f0; /* Light background for body */
+        }
+        canvas {
+            border: 2px solid #333;
+            background-color: #fff; /* White background for canvas */
+            margin-bottom: 20px;
+            /* Make canvas responsive in width, and limit maximum size */
+            width: 95%; /* Take up most of the screen width */
+            max-width: 500px; /* But don't get too big */
+            height: 66.66vh; /* 2/3 of the viewport height */
+            max-height: 66.66vh;
+            aspect-ratio: 5 / 3;
+        }
+        #resultsContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .resultCanvas {
+            border: 2px solid #333;
+            background-color: #eee;
+            margin-bottom: 10px;
+            width: 95%;
+            max-width: 500px;
+            height: auto;
+            max-height: 300px;
+            aspect-ratio: 5 / 3;
+        }
+    </style>
+</head>
+<body>
+    <button id="start_new_round_button">Start new round!</button>
+    <div id="resultsContainer" style="display: none;">
+        <h2>Drawings</h2>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const resultsContainer = document.getElementById('resultsContainer');
+        const new_round_button = document.getElementById('start_new_round_button')
+        let clientSocketId;
+
+        // Adjust canvas size on initial load and resize
+        function resizeCanvas() {
+            const containerWidth = document.body.clientWidth * 0.95; // 95% of body width
+            const maxWidth = 500;
+            const canvasWidth = Math.min(containerWidth, maxWidth);
+            const canvasHeight = window.innerHeight * 0.6666; // 2/3 of window height
+            const maxCanvasHeight = window.innerHeight * 0.6666;
+        }
+
+        function start_new_round () {
+            console.log('Test')
+            fetch('/api/startround')
+        }
+
+        resizeCanvas(); // Initial resize
+        window.addEventListener('resize', resizeCanvas); // Resize on window resize
+        new_round_button.addEventListener('click', start_new_round);
+        // Drawing setup
+        let drawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        
+
+        socket.on('connect', () => {
+            clientSocketId = socket.id;
+            console.log("Client connected with ID:", clientSocketId);
+        });
+
+        socket.on('timeUp', () => {
+            alert('Time is up!');
+            resultsContainer.style.display = 'flex';
+            resultsContainer.innerHTML = '<h2>Drawings</h2>'; // Clear previous results
+
+            
+            fetchCanvasData().then((allCanvasData) => {
+                for (var user_image in allCanvasData) {
+                    if (Object.prototype.hasOwnProperty.call(allCanvasData, user_image)) {
+                        const img = new Image();
+                        img.onload = () => {
+                            const resultCanvas = document.createElement('canvas');
+                            resultCanvas.className = 'resultCanvas';
+                            const resultCtx = resultCanvas.getContext('2d');
+
+                            //  Set the canvas dimensions.  Important to display the image correctly.
+                            //  If the original image dimensions are known, use those.
+                            //  If not, you can try to get them from the image object, but that might not always work.
+                            //  Here, I'm using a fixed size, but you should adjust as needed.
+                            const desiredWidth = 400;  // Example width
+                            const desiredHeight = 300; // Example height
+
+                            resultCanvas.width = desiredWidth;
+                            resultCanvas.height = desiredHeight;
+
+                            resultCtx.drawImage(img, 0, 0, desiredWidth, desiredHeight);
+                            resultsContainer.appendChild(resultCanvas);
+                        };
+                        img.src = allCanvasData[user_image];
+                    }
+                }
+            })
+            
+            
+        });
+
+        async function fetchCanvasData() {
+            try {
+                const response = await fetch("/api/canvasdata");
+
+                if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const allCanvasData = await response.json();
+                return allCanvasData; // Return the parsed JSON data
+
+            } catch (error) {
+                console.error("Error fetching canvas data:", error);
+                // Handle the error appropriately, perhaps by displaying an error message to the user.
+                return null; // or throw error; or return empty array; depending on error handling
+            }
+        }
+    </script>
+</body>
+</html>
