@@ -1,5 +1,128 @@
 const socket = io();
 
+function createImageGuessForm() {
+    // Create the form element
+    const ImageGuessForm = document.createElement('div');
+    ImageGuessForm.id = 'image-guess-form';
+    ImageGuessForm.classList.add('hidden');
+
+    // Create the heading
+    const heading = document.createElement('h2');
+    heading.textContent = 'Gæt hvad billedet ligner';
+
+    // Create the input field
+    const usernameInput = document.createElement('input');
+    usernameInput.type = 'text';
+    usernameInput.id = 'guess-input';
+    usernameInput.placeholder = 'Et gæt';
+
+    // Create the button
+    const guessButton = document.createElement('button');
+    guessButton.id = 'guess-button';
+    guessButton.textContent = 'Gæt';
+
+    // Append the elements to the form
+    ImageGuessForm.appendChild(heading);
+    ImageGuessForm.appendChild(usernameInput);
+    ImageGuessForm.appendChild(guessButton);
+
+    // Append the form to the body or any other desired container
+    document.body.appendChild(ImageGuessForm);
+
+    // Add event listeners for the button and input
+    guessButton.addEventListener('click', handleGuess);
+    usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleGuess();
+        }
+    });
+
+    return ImageGuessForm; // Return the form element if needed
+}
+
+// Call the function to create and append the login form
+const guessFormElement = createImageGuessForm(); // Store the form element if you need to reference it later
+
+// Get the elements from the created form.
+const guessForm = document.getElementById('image-guess-form');
+const guessInput = document.getElementById('guess-input');
+const guessButton = document.getElementById('guess-button');
+
+
+function handleGuess () {
+    guess = guessInput.value.trim();
+    if (username === "") {
+        alert("Indtast dit gæt"); // Basic validation
+        return;
+    }
+
+    // Emit the username to the server
+    socket.emit('guess', guess);
+}
+
+function createLoginForm() {
+    // Create the form element
+    const loginForm = document.createElement('div');
+    loginForm.id = 'login-form';
+
+    // Create the heading
+    const heading = document.createElement('h2');
+    heading.textContent = 'Enter Username';
+
+    // Create the input field
+    const usernameInput = document.createElement('input');
+    usernameInput.type = 'text';
+    usernameInput.id = 'username-input';
+    usernameInput.placeholder = 'Navn';
+
+    // Create the button
+    const loginButton = document.createElement('button');
+    loginButton.id = 'login-button';
+    loginButton.textContent = 'Deltag i spil';
+
+    // Append the elements to the form
+    loginForm.appendChild(heading);
+    loginForm.appendChild(usernameInput);
+    loginForm.appendChild(loginButton);
+
+    // Append the form to the body or any other desired container
+    document.body.appendChild(loginForm);
+
+    // Add event listeners for the button and input
+    loginButton.addEventListener('click', handleLogin);
+    usernameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleLogin();
+        }
+    });
+
+    return loginForm; // Return the form element if needed
+}
+
+// Call the function to create and append the login form
+const loginFormElement = createLoginForm(); // Store the form element if you need to reference it later
+
+// Get the elements from the created form.
+const loginForm = document.getElementById('login-form');
+const usernameInput = document.getElementById('username-input');
+const loginButton = document.getElementById('login-button');
+
+//Rest of the code remains same
+// Function to handle user login
+function handleLogin() {
+    username = usernameInput.value.trim();
+    if (username === "") {
+        alert("Please enter a username."); // Basic validation
+        return;
+    }
+
+    // Emit the username to the server
+    socket.emit('submitName', username);
+
+    // Hide the login form and show the game elements
+    loginForm.classList.add('hidden');
+    drawElement.classList.remove('hidden');
+}
 
 function createCanvas() {
     // Create a wrapper div
@@ -128,79 +251,29 @@ canvas.addEventListener('touchend', () => {
     drawing = false;
 });
 
+socket.on('connect', () => {
+    console.log('Connected to server');
+    setTimeout(() => {
+        socket.emit('client_connection');
+    }, 10)
+});
+
+
+
 socket.on('timeUp', () => {
     alert('Time is up!');
 });
+socket.on('guess_on_image', (time) => {
+    loginFormElement.classList.add('hidden');
+    drawElement.classList.add('hidden');
+    guessFormElement.classList.remove('hidden')
+})
 socket.on('reset', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 });
 socket.on('new_round', (text, time) => {
+    console.log('New round: ' + text);
     title.textContent = 'Du skal tegne: ' + text;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 });
 
-
-
-function createLoginForm() {
-    // Create the form element
-    const loginForm = document.createElement('div');
-    loginForm.id = 'login-form';
-
-    // Create the heading
-    const heading = document.createElement('h2');
-    heading.textContent = 'Enter Username';
-
-    // Create the input field
-    const usernameInput = document.createElement('input');
-    usernameInput.type = 'text';
-    usernameInput.id = 'username-input';
-    usernameInput.placeholder = 'Username';
-
-    // Create the button
-    const loginButton = document.createElement('button');
-    loginButton.id = 'login-button';
-    loginButton.textContent = 'Join Game';
-
-    // Append the elements to the form
-    loginForm.appendChild(heading);
-    loginForm.appendChild(usernameInput);
-    loginForm.appendChild(loginButton);
-
-    // Append the form to the body or any other desired container
-    document.body.appendChild(loginForm);
-
-    // Add event listeners for the button and input
-    loginButton.addEventListener('click', handleLogin);
-    usernameInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            handleLogin();
-        }
-    });
-
-    return loginForm; // Return the form element if needed
-}
-
-// Call the function to create and append the login form
-const loginFormElement = createLoginForm(); // Store the form element if you need to reference it later
-
-// Get the elements from the created form.
-const loginForm = document.getElementById('login-form');
-const usernameInput = document.getElementById('username-input');
-const loginButton = document.getElementById('login-button');
-
-//Rest of the code remains same
-// Function to handle user login
-function handleLogin() {
-    username = usernameInput.value.trim();
-    if (username === "") {
-        alert("Please enter a username."); // Basic validation
-        return;
-    }
-
-    // Emit the username to the server
-    socket.emit('login', username);
-
-    // Hide the login form and show the game elements
-    loginForm.classList.add('hidden');
-    drawElement.classList.remove('hidden');
-}

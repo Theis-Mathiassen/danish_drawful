@@ -48,6 +48,11 @@
     <button id="start_new_round_button">Start new round!</button>
     <div id="resultsContainer" style="display: none;">
         <h2>Drawings</h2>
+        <canvas id="resultCanvas"></canvas>
+    </div>
+    <div id="userList">
+        <!-- List all users -->
+
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
@@ -56,6 +61,7 @@
         const resultsContainer = document.getElementById('resultsContainer');
         const new_round_button = document.getElementById('start_new_round_button')
         let clientSocketId;
+        let allCanvasData;
 
         // Adjust canvas size on initial load and resize
         function resizeCanvas() {
@@ -83,43 +89,81 @@
 
         socket.on('connect', () => {
             clientSocketId = socket.id;
-            console.log("Client connected with ID:", clientSocketId);
-            socket.emit('host_connection');
+            console.log("Host connected with ID:", clientSocketId);
+            setTimeout(() => {
+                socket.emit('host_connection');
+            }, 10)
         });
 
-        socket.on('timeUp', () => {
-            alert('Time is up!');
+        socket.on('users_changed', (users) => {
+            console.log('User Changed' + users);
+            const userList = document.getElementById('userList');
+            userList.innerHTML = ''; // Clear previous list
+            users.forEach(user => {
+                const listItem = document.createElement('li');
+                listItem.textContent = user.userName;
+                userList.appendChild(listItem);
+            });
+        });
+        
+
+        socket.on('guess_on_image', async (id) => {
+            if (allCanvasData === undefined)
+                allCanvasData = await fetchCanvasData();
+            resultCanvas = document.getElementById('resultCanvas');
             resultsContainer.style.display = 'flex';
             resultsContainer.innerHTML = '<h2>Drawings</h2>'; // Clear previous results
+            const img = new Image();
+            img.onload = () => {
+                const resultCanvas = document.createElement('canvas');
+                resultCanvas.className = 'resultCanvas';
+                const resultCtx = resultCanvas.getContext('2d');
 
+                //  Set the canvas dimensions.  Important to display the image correctly.
+                //  If the original image dimensions are known, use those.
+                //  If not, you can try to get them from the image object, but that might not always work.
+                //  Here, I'm using a fixed size, but you should adjust as needed.
+                const desiredWidth = 400;  // Example width
+                const desiredHeight = 300; // Example height
+
+                resultCanvas.width = desiredWidth;
+                resultCanvas.height = desiredHeight;
+
+                resultCtx.drawImage(img, 0, 0, desiredWidth, desiredHeight);
+                resultsContainer.appendChild(resultCanvas);
+            };
+            img.src = allCanvasData[id];
+        });
+
+        socket.on('timeUp', async () => {
+            allCanvasData = await fetchCanvasData()
             
-            fetchCanvasData().then((allCanvasData) => {
-                for (var user_image in allCanvasData) {
-                    if (Object.prototype.hasOwnProperty.call(allCanvasData, user_image)) {
-                        const img = new Image();
-                        img.onload = () => {
-                            const resultCanvas = document.createElement('canvas');
-                            resultCanvas.className = 'resultCanvas';
-                            const resultCtx = resultCanvas.getContext('2d');
+            /*
+            for (var user_image in allCanvasData) {
+                if (Object.prototype.hasOwnProperty.call(allCanvasData, user_image)) {
+                    const img = new Image();
+                    img.onload = () => {
+                        const resultCanvas = document.createElement('canvas');
+                        resultCanvas.className = 'resultCanvas';
+                        const resultCtx = resultCanvas.getContext('2d');
 
-                            //  Set the canvas dimensions.  Important to display the image correctly.
-                            //  If the original image dimensions are known, use those.
-                            //  If not, you can try to get them from the image object, but that might not always work.
-                            //  Here, I'm using a fixed size, but you should adjust as needed.
-                            const desiredWidth = 400;  // Example width
-                            const desiredHeight = 300; // Example height
+                        //  Set the canvas dimensions.  Important to display the image correctly.
+                        //  If the original image dimensions are known, use those.
+                        //  If not, you can try to get them from the image object, but that might not always work.
+                        //  Here, I'm using a fixed size, but you should adjust as needed.
+                        const desiredWidth = 400;  // Example width
+                        const desiredHeight = 300; // Example height
 
-                            resultCanvas.width = desiredWidth;
-                            resultCanvas.height = desiredHeight;
+                        resultCanvas.width = desiredWidth;
+                        resultCanvas.height = desiredHeight;
 
-                            resultCtx.drawImage(img, 0, 0, desiredWidth, desiredHeight);
-                            resultsContainer.appendChild(resultCanvas);
-                        };
-                        img.src = allCanvasData[user_image];
-                    }
+                        resultCtx.drawImage(img, 0, 0, desiredWidth, desiredHeight);
+                        resultsContainer.appendChild(resultCanvas);
+                    };
+                    img.src = allCanvasData[user_image];
                 }
-            })
-            
+            }
+            */
             
         });
 
@@ -131,8 +175,8 @@
                 throw new Error(`HTTP error! status: ${response.status}`);
                 }
 
-                const allCanvasData = await response.json();
-                return allCanvasData; // Return the parsed JSON data
+                const data = await response.json();
+                return data; // Return the parsed JSON data
 
             } catch (error) {
                 console.error("Error fetching canvas data:", error);

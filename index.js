@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
 const path = require('path'); // Import the path module
+const { hostname } = require('os');
 
 const app = express();
 const server = http.createServer(app);
@@ -9,6 +10,12 @@ const io = socketIO(server);
 
 app.use(express.static('public'))
 
+//      /socket id of image / socket id of guess
+guess_storage = []
+
+current_image_socketid = ''
+
+host_socket_id = '';
 
 // Serve the HTML file
 app.get('/', (req, res) => {
@@ -158,7 +165,7 @@ function getRandomNumber(min, max) {
 
 
 app.get('/api/startround', async (req, res) => { // Make the handler async
-    let time = 6000;
+    let draw_time = 45000;
 
     try {
         // Use map to create an array of promises, then await Promise.all
@@ -167,6 +174,7 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
         let prompts = [];
         let init_id = Math.floor(getRandomNumber(0, draw_prompts.length))
         let i = 0;
+        console.log('all sockets: ' + socket_ids)
         for (const socketId of socket_ids) {
             let index = (init_id+i) % draw_prompts.length
             prompts.push(draw_prompts[index]);
@@ -177,16 +185,45 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
         console.log(prompts)
         socket_ids.forEach(id => {
             let text = prompts[socket_ids.indexOf(id)];
-            io.to(id).emit('new_round', text, time);
+            io.to(id).emit('new_round', text, draw_time);
         });
+        
+        console.log(`Round started with a ${draw_time / 1000} second timer.`);
+        sleep(draw_time).then(async () => {
+            io.emit('timeUp');
+            console.log('Time is up! Emitting timeUp event.');
+            
+            for (let i = 0; i < socket_ids.length; i++) {
+                current_image_socketid = socket_ids[i];
+                guess_storage[current_image_socketid] = {}
+                io.emit('guess_on_image', socket_ids[i])
+                const user = user_names.find(user => user.socketId === socket_ids[i]);
 
-        startRound(time);
+                if (user === undefined) {
+                    console.log('User not found for socket id: ' + socket_ids[i]);
+                    continue;
+                    // Handle the case where the user is not found
+                    
+                } else {
+
+                    console.log('Guessing on image for user: ' + user.userName + 'with socket id: ' + user.socketId);
+                    console.log('usernames: ' + user_names)
+                }
+                    
+                await sleep(6000);
+            }
+
+        });
         res.sendStatus(200); // Send a success status
     } catch (error) {
         console.error("Error starting round:", error);
         res.sendStatus(500); // Send an error status
     }
 });
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+  
 
 app.get('/api/canvasdata', (req,res) => {
     result = {}
@@ -204,11 +241,20 @@ app.get('/api/canvasdata', (req,res) => {
 
 
 io.on('connection', (socket) => {
-    console.log('A client connected:', socket.id);
-    clientCanvasData[socket.id] = []; // Initialize an array for this client's data
-    socket_ids.push(socket.id)
+    
+    
+        
     socket.on('submitName', (user_name) => {
-        user_names[socket.id] = user_name;
+        console.log("Socket_id: "+socket.id + ' submitted name: ' + user_name)
+        //user_names[socket.id] = user_name; // Old way
+        user_names.push({socketId: socket.id, userName: user_name})
+        console.log('users_changed: users: '+ user_names)
+        io.to(host_socket_id).emit('users_changed', user_names)
+    });
+    socket.on('guess', (guess) => {
+        const user = user_names.find(user => user.socketId === socket.id);
+        console.log('User: ' + user.userName +' Guessed: ' + guess)
+        guess_storage[current_image_socketid][socket.id] = guess
     });
     socket.on('canvasUpdate', (data) => {
         // Store the received canvas data
@@ -216,35 +262,36 @@ io.on('connection', (socket) => {
     });
 
     socket.on('host_connection', () => {
-        delete clientCanvasData[socket.id]
-        const index = socket_ids.indexOf(''+socket.id);
-        if (index > -1) { // only splice array when item is found
-            socket_ids = socket_ids.splice(index, 1); // 2nd parameter means remove one item only
-        }
-        
-        console.log(clientCanvasData)
-    })
+        console.log('A Host connected:', socket.id);
+        host_socket_id = socket.id;
+    });
+    socket.on('client_connection', () => {
+        console.log('A client connected:', socket.id);
+        clientCanvasData[socket.id] = []; // Initialize an array for this client's data
+        guess_storage[socket.id] = [];
+        socket_ids.push(socket.id)
+    });
 
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
-        delete clientCanvasData[socket.id]; // Remove client's data when they disconnect
-        const index = socket_ids.indexOf(''+socket.id);
-        if (index > -1) { // only splice array when item is found
-            socket_ids = socket_ids.splice(index, 1); // 2nd parameter means remove one item only
+        if (socket.id != host_socket_id) {
+            const index = socket_ids.indexOf(socket.id);
+            if (index > -1) { // only splice array when item is found
+                socket_ids = socket_ids.splice(index, 1); // 2nd parameter means remove one item only
+            }
+            const indexUser = user_names.indexOf(socket.id);
+            if (indexUser > -1) { // only splice array when item is found
+                user_names = user_names.splice(indexUser, 1); // 2nd parameter means remove one item only
+            }
+            delete clientCanvasData[socket.id]; // Remove client's data when they disconnect
+            
+            io.to(host_socket_id).emit('users_changed', user_names)
+            delete guess_storage[socket.id];
         }
-        delete user_names[socket.id]
     });
 });
 
-function startRound(duration) {
-    
 
-    setTimeout(() => {
-        io.emit('timeUp');
-        console.log('Time is up! Emitting timeUp event.');
-    }, duration);
-    console.log(`Round started with a ${duration / 1000} second timer.`);
-}
 
 function stopRound() {
     clearTimeout(timer);
@@ -291,6 +338,11 @@ async function sendToOllama(seed) {
 //sendToOllama(1000).then((result)=>{
 //    console.log(result)
 //})
+
+//setTimeout(()=>{
+//    io.emit('guess_image', 1000)
+//    console.log('emitted: ' + 'guess_image')
+//},5000)
 
 server.listen(3000, () => {
     console.log('Server listening on port 3000');
