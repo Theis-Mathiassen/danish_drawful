@@ -37,7 +37,10 @@ const solutionList = document.getElementById('solution-list');
 
 function populateSolutionList (guessList) {
     solutionList.innerHTML = '';
-    if (guessList === undefined)
+    if (guessList === undefined) {
+        console.log('Undefined guessList')
+    }
+
     for (const guess in guessList) {
         if (Object.prototype.hasOwnProperty.call(guessList, guess)) {
             const li = document.createElement('li');
@@ -345,7 +348,7 @@ socket.on('connect', () => {
 
 
 socket.on('timeUp', () => {
-    alert('Time is up!');
+    //alert('Time is up!');
 });
 socket.on('guess_on_image', () => {
     switch_view('guess')

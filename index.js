@@ -11,7 +11,7 @@ const io = socketIO(server);
 app.use(express.static('public'))
 
 //      /socket id of image / socket id of guess
-guess_storage = []
+guess_storage = {}
 //      /socket id of image / socket id of guess selected
 guessSelectedStorage = []
 
@@ -217,7 +217,8 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
                 }
                     
                 await sleep(guess_time);
-                io.emit('select_guess_form', guess_storage[current_image_socketid]);
+                const to_emit = guess_storage[current_image_socketid]
+                io.emit('select_guess_form', to_emit);
 
                 await sleep(select_time);
             }
