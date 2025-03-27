@@ -12,6 +12,9 @@ app.use(express.static('public'))
 
 //      /socket id of image / socket id of guess
 guess_storage = []
+//      /socket id of image / socket id of guess selected
+guessSelectedStorage = []
+
 
 current_image_socketid = ''
 
@@ -165,7 +168,9 @@ function getRandomNumber(min, max) {
 
 
 app.get('/api/startround', async (req, res) => { // Make the handler async
-    let draw_time = 45000;
+    const draw_time = 10000;
+    const guess_time = 10000;
+    const select_time = 10000;
 
     try {
         // Use map to create an array of promises, then await Promise.all
@@ -183,6 +188,7 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
 
 
         console.log(prompts)
+        io.to(host_socket_id).emit('new_round', '', draw_time)
         socket_ids.forEach(id => {
             let text = prompts[socket_ids.indexOf(id)];
             io.to(id).emit('new_round', text, draw_time);
@@ -210,7 +216,10 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
                     console.log('usernames: ' + user_names)
                 }
                     
-                await sleep(6000);
+                await sleep(guess_time);
+                io.emit('select_guess_form', guess_storage[current_image_socketid]);
+
+                await sleep(select_time);
             }
 
         });
@@ -256,6 +265,9 @@ io.on('connection', (socket) => {
         console.log('User: ' + user.userName +' Guessed: ' + guess)
         guess_storage[current_image_socketid][socket.id] = guess
     });
+    socket.on('guess_selected', (guess) => {
+        guessSelectedStorage[current_image_socketid][socket.id] = guess;
+    });
     socket.on('canvasUpdate', (data) => {
         // Store the received canvas data
         clientCanvasData[socket.id] = data;
@@ -269,6 +281,7 @@ io.on('connection', (socket) => {
         console.log('A client connected:', socket.id);
         clientCanvasData[socket.id] = []; // Initialize an array for this client's data
         guess_storage[socket.id] = [];
+        guessSelectedStorage[socket.id] = [];
         socket_ids.push(socket.id)
     });
 

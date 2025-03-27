@@ -1,5 +1,60 @@
 const socket = io();
 
+function createSelectResponseForm() {
+    // Create the form element
+    const GuessSelectForm = document.createElement('div');
+    GuessSelectForm.id = 'guess-select-form';
+    GuessSelectForm.classList.add('hidden');
+
+
+    // Create the heading
+    const heading = document.createElement('h2');
+    heading.textContent = 'Vælg den korrekte tekst';
+
+    
+    // Create the unordered list element
+    const ul = document.createElement('ul');
+    ul.id = 'solution-list';
+
+
+    // Append the elements to the form
+    GuessSelectForm.appendChild(heading);
+    GuessSelectForm.appendChild(ul);
+
+    // Append the form to the body or any other desired container
+    document.body.appendChild(GuessSelectForm);
+
+    return GuessSelectForm;
+}
+
+// Call the function to create and append the createSelectResponse form
+const selectGuessForm = createSelectResponseForm();
+const solutionList = document.getElementById('solution-list');
+
+
+
+
+
+function populateSolutionList (guessList) {
+    solutionList.innerHTML = '';
+    if (guessList === undefined)
+    for (const guess in guessList) {
+        if (Object.prototype.hasOwnProperty.call(guessList, guess)) {
+            const li = document.createElement('li');
+            li.textContent = guessList[guess];
+            li.addEventListener('click', () => {
+                select_guess(guess);
+            });
+            solutionList.appendChild(li);
+        }
+    }
+}
+
+
+function select_guess (guess) {
+    socket.emit('guess_selected', guess);
+}
+
 function createImageGuessForm() {
     // Create the form element
     const ImageGuessForm = document.createElement('div');
@@ -120,15 +175,14 @@ function handleLogin() {
     socket.emit('submitName', username);
 
     // Hide the login form and show the game elements
-    loginForm.classList.add('hidden');
-    drawElement.classList.remove('hidden');
+    switch_view('draw');
 }
 
 function createCanvas() {
     // Create a wrapper div
     const canvasWrapperDiv = document.createElement('div');
     canvasWrapperDiv.id = 'draw_element'
-    canvasWrapperDiv.className = 'hidden';
+    canvasWrapperDiv.classList.add('hidden');
 
     // Create the heading
     const titleElement = document.createElement('h2');
@@ -251,6 +305,36 @@ canvas.addEventListener('touchend', () => {
     drawing = false;
 });
 
+
+function switch_view (view) {
+    loginFormElement.classList.add('hidden');
+    drawElement.classList.add('hidden');
+    guessFormElement.classList.add('hidden');
+    selectGuessForm.classList.add('hidden');
+    switch (view) {
+        case 'login':
+            loginFormElement.classList.remove('hidden');
+            break;
+        case 'draw':
+            drawElement.classList.remove('hidden');
+            break;
+        case 'guess':
+            guessFormElement.classList.remove('hidden');
+            break;
+        case 'select':
+            selectGuessForm.classList.remove('hidden');
+            break;
+        default:
+            console.log('Invalid view: ' + view);
+            break;
+    }       
+}
+
+
+
+
+
+
 socket.on('connect', () => {
     console.log('Connected to server');
     setTimeout(() => {
@@ -263,11 +347,16 @@ socket.on('connect', () => {
 socket.on('timeUp', () => {
     alert('Time is up!');
 });
-socket.on('guess_on_image', (time) => {
-    loginFormElement.classList.add('hidden');
-    drawElement.classList.add('hidden');
-    guessFormElement.classList.remove('hidden')
-})
+socket.on('guess_on_image', () => {
+    switch_view('guess')
+});
+
+socket.on('select_guess_form', (guesses) => {
+    console.log('Hello from select_guess_form')
+    populateSolutionList(guesses)
+    switch_view('select')
+});
+
 socket.on('reset', () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 });
