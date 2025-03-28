@@ -13,12 +13,17 @@ app.use(express.static('public'))
 //      /socket id of image / socket id of guess
 guess_storage = {}
 //      /socket id of image / socket id of guess selected
-guessSelectedStorage = []
+guessSelectedStorage = {}
+
+drawingSubmitted = {}
 
 
 current_image_socketid = ''
 
 host_socket_id = '';
+
+let current_sleep_timeout;
+let current_sleep_resolve;
 
 // Serve the HTML file
 app.get('/', (req, res) => {
@@ -31,7 +36,7 @@ app.get('/host', (req, res) => {
 });
 
 let clientCanvasData = {};    // Store canvas data for each client using socket.id as key
-let user_names = []           // Store user name for each client using socket.id as key
+let user_names = {}           // Store user name for each client using socket.id as key
 let socket_ids = []
 
 const draw_prompts = [
@@ -179,7 +184,7 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
         let prompts = [];
         let init_id = Math.floor(getRandomNumber(0, draw_prompts.length))
         let i = 0;
-        console.log('all sockets: ' + socket_ids)
+        console.log('all sockets: ' + socket_ids);
         for (const socketId of socket_ids) {
             let index = (init_id+i) % draw_prompts.length
             prompts.push(draw_prompts[index]);
@@ -195,35 +200,38 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
         });
         
         console.log(`Round started with a ${draw_time / 1000} second timer.`);
-        sleep(draw_time).then(async () => {
-            io.emit('timeUp');
-            console.log('Time is up! Emitting timeUp event.');
-            
-            for (let i = 0; i < socket_ids.length; i++) {
-                current_image_socketid = socket_ids[i];
-                guess_storage[current_image_socketid] = {}
-                io.emit('guess_on_image', socket_ids[i])
-                const user = user_names.find(user => user.socketId === socket_ids[i]);
+        await sleep(draw_time);
+        io.emit('timeUp');
+        console.log('Time is up! Emitting timeUp event.');
+        
+        for (let i = 0; i < socket_ids.length; i++) {
+            current_image_socketid = socket_ids[i];
+            guess_storage[current_image_socketid] = {}
+            io.emit('guess_on_image', socket_ids[i])
+            // Old
+            //const user = user_names.find(user => user.socketId === socket_ids[i]);
+            const user = user_names[socket_ids[i]];
 
-                if (user === undefined) {
-                    console.log('User not found for socket id: ' + socket_ids[i]);
-                    continue;
-                    // Handle the case where the user is not found
-                    
-                } else {
 
-                    console.log('Guessing on image for user: ' + user.userName + 'with socket id: ' + user.socketId);
-                    console.log('usernames: ' + user_names)
-                }
-                    
-                await sleep(guess_time);
-                const to_emit = guess_storage[current_image_socketid]
-                io.emit('select_guess_form', to_emit);
 
-                await sleep(select_time);
+            if (user === undefined) {
+                console.log('User not found for socket id: ' + socket_ids[i]);
+                continue;
+                // Handle the case where the user is not found
+                
+            } else {
+
+                console.log('Guessing on image for user: ' + user.userName + 'with socket id: ' + user.socketId);
+                console.log('usernames: ' + user_names)
             }
+                
+            await sleep(guess_time);
+            const to_emit = guess_storage[current_image_socketid]
+            io.emit('select_guess_form', to_emit);
 
-        });
+            await sleep(select_time);
+        }
+
         res.sendStatus(200); // Send a success status
     } catch (error) {
         console.error("Error starting round:", error);
@@ -231,7 +239,21 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
     }
 });
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(resolve => {current_sleep_timeout=setTimeout(resolve, ms); current_sleep_resolve = resolve});
+}
+
+function checkAllSubmitted () {
+    let allSubmitted = true;
+    socket_ids.forEach(socket => {
+        if (!drawingSubmitted[socket]) {
+            allSubmitted = false;
+        }
+    });
+    
+    if (allSubmitted) {
+        clearTimeout(current_sleep_timeout);
+        current_sleep_resolve();
+    }
 }
   
 
@@ -256,14 +278,14 @@ io.on('connection', (socket) => {
         
     socket.on('submitName', (user_name) => {
         console.log("Socket_id: "+socket.id + ' submitted name: ' + user_name)
-        //user_names[socket.id] = user_name; // Old way
-        user_names.push({socketId: socket.id, userName: user_name})
+        user_names[socket.id] = user_name; // Old way
+        //user_names.push({socketId: socket.id, userName: user_name})
         console.log('users_changed: users: '+ user_names)
         io.to(host_socket_id).emit('users_changed', user_names)
     });
     socket.on('guess', (guess) => {
-        const user = user_names.find(user => user.socketId === socket.id);
-        console.log('User: ' + user.userName +' Guessed: ' + guess)
+        const username = user_names[socket.id];
+        console.log('User: ' + username +' Guessed: ' + guess)
         guess_storage[current_image_socketid][socket.id] = guess
     });
     socket.on('guess_selected', (guess) => {
@@ -272,6 +294,10 @@ io.on('connection', (socket) => {
     socket.on('canvasUpdate', (data) => {
         // Store the received canvas data
         clientCanvasData[socket.id] = data;
+    });
+    socket.on('submitDrawing', () => {
+        drawingSubmitted[socket.id] = true;
+        checkAllSubmitted();
     });
 
     socket.on('host_connection', () => {
@@ -282,25 +308,25 @@ io.on('connection', (socket) => {
         console.log('A client connected:', socket.id);
         clientCanvasData[socket.id] = []; // Initialize an array for this client's data
         guess_storage[socket.id] = [];
-        guessSelectedStorage[socket.id] = [];
-        socket_ids.push(socket.id)
+        guessSelectedStorage[socket.id] = {};
+        socket_ids.push(socket.id);
+        console.log('all sockets: ' + socket_ids);
     });
 
     socket.on('disconnect', () => {
         console.log('A client disconnected:', socket.id);
         if (socket.id != host_socket_id) {
             const index = socket_ids.indexOf(socket.id);
-            if (index > -1) { // only splice array when item is found
-                socket_ids = socket_ids.splice(index, 1); // 2nd parameter means remove one item only
+            if (index !== -1) { // only splice array when item is found
+                socket_ids.splice(index, 1); // 2nd parameter means remove one item only
             }
-            const indexUser = user_names.indexOf(socket.id);
-            if (indexUser > -1) { // only splice array when item is found
-                user_names = user_names.splice(indexUser, 1); // 2nd parameter means remove one item only
-            }
+            console.log('all sockets: ' + socket_ids);
+            delete user_names[socket.id];
             delete clientCanvasData[socket.id]; // Remove client's data when they disconnect
             
             io.to(host_socket_id).emit('users_changed', user_names)
             delete guess_storage[socket.id];
+            delete guessSelectedStorage[socket.id];
         }
     });
 });

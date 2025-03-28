@@ -98,11 +98,13 @@
             console.log('User Changed' + users);
             const userList = document.getElementById('userList');
             userList.innerHTML = ''; // Clear previous list
-            users.forEach(user => {
-                const listItem = document.createElement('li');
-                listItem.textContent = user.userName;
-                userList.appendChild(listItem);
-            });
+            for (const user in users) {
+                if (Object.prototype.hasOwnProperty.call(users, user)) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = users[user];
+                    userList.appendChild(listItem);
+                }
+            }
         });
         
 

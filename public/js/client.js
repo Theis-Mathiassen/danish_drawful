@@ -1,5 +1,23 @@
 const socket = io();
 
+function createWaitingScreen() {
+    const waitingScreenWrapper = document.createElement('div');
+    waitingScreenWrapper.id = 'waiting-wrapper';
+    waitingScreenWrapper.classList.add('hidden');
+
+    // Create the heading
+    const heading = document.createElement('h2');
+    heading.textContent = 'Vent på de andre :)';
+
+    waitingScreenWrapper.appendChild(heading);
+
+    document.body.appendChild(waitingScreenWrapper);
+
+    return waitingScreenWrapper;
+}
+
+const waitingWrapper = createWaitingScreen();
+
 function createSelectResponseForm() {
     // Create the form element
     const GuessSelectForm = document.createElement('div');
@@ -56,6 +74,7 @@ function populateSolutionList (guessList) {
 
 function select_guess (guess) {
     socket.emit('guess_selected', guess);
+    switch_view('wait');
 }
 
 function createImageGuessForm() {
@@ -116,6 +135,7 @@ function handleGuess () {
 
     // Emit the username to the server
     socket.emit('guess', guess);
+    switch_view('wait');
 }
 
 function createLoginForm() {
@@ -178,7 +198,7 @@ function handleLogin() {
     socket.emit('submitName', username);
 
     // Hide the login form and show the game elements
-    switch_view('draw');
+    switch_view('wait');
 }
 
 function createCanvas() {
@@ -197,9 +217,15 @@ function createCanvas() {
     canvas.id = 'myCanvas';
     //canvas.className = 'hidden';
 
+    // Create the submit button
+    const button = document.createElement('button');
+    button.id = 'drawSubmitButton';
+    button.addEventListener('click', submitDrawing);
+
     // Append the elements to the body
     canvasWrapperDiv.appendChild(titleElement);
     canvasWrapperDiv.appendChild(canvas);
+    canvasWrapperDiv.appendChild(button);
 
     document.body.appendChild(canvasWrapperDiv)
 
@@ -214,6 +240,13 @@ const drawElement = createCanvas();
 const canvas = document.getElementById('myCanvas');
 const title = document.getElementById('title');
 const ctx = canvas.getContext('2d');
+
+
+// Handle draw submit
+function submitDrawing() {
+    switch_view('wait');
+    socket.emit('submitDrawing');
+}
 
 // Adjust canvas size on initial load and resize
 function resizeCanvas() {
@@ -314,6 +347,7 @@ function switch_view (view) {
     drawElement.classList.add('hidden');
     guessFormElement.classList.add('hidden');
     selectGuessForm.classList.add('hidden');
+    waitingWrapper.classList.add('hidden');
     switch (view) {
         case 'login':
             loginFormElement.classList.remove('hidden');
@@ -327,6 +361,8 @@ function switch_view (view) {
         case 'select':
             selectGuessForm.classList.remove('hidden');
             break;
+        case 'wait':
+            waitingWrapper.classList.remove('hidden');
         default:
             console.log('Invalid view: ' + view);
             break;
@@ -367,5 +403,6 @@ socket.on('new_round', (text, time) => {
     console.log('New round: ' + text);
     title.textContent = 'Du skal tegne: ' + text;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    switch_view('draw');
 });
 
