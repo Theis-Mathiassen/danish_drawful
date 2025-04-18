@@ -22,8 +22,8 @@
             /* Make canvas responsive in width, and limit maximum size */
             width: 95%; /* Take up most of the screen width */
             max-width: 500px; /* But don't get too big */
-            height: 66.66vh; /* 2/3 of the viewport height */
-            max-height: 66.66vh;
+            height: 300px; /* 2/3 of the viewport height */
+            max-height: 100%;
             aspect-ratio: 5 / 3;
         }
         #resultsContainer {
@@ -32,27 +32,68 @@
             align-items: center;
             margin-top: 20px;
         }
-        .resultCanvas {
-            border: 2px solid #333;
-            background-color: #eee;
-            margin-bottom: 10px;
+        .horizontal {
+            display: flex;
+            flex-direction: row;
+            flex-grow: 1;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+            width: 100%;
+        }
+        .parent {
+            display: flex;
+            flex: 0 0 100%;
+            justify-content: space-around;
+        }
+
+        .left {
+            border: 1px solid lightgray;
+            flex: 0 0 60%;
+        }
+
+        .right {
+            border: 1px solid lightgray;
+            flex: 0 0 25%;
+        }
+        #myProgress {
+            margin: 1.5rem;
+            display:flex;
             width: 95%;
-            max-width: 500px;
-            height: auto;
-            max-height: 300px;
-            aspect-ratio: 5 / 3;
+            background-color: grey;
+        }
+
+        #myBar {
+            width: 1%;
+            height: 30px;
+            background-color: green;
         }
     </style>
 </head>
 <body>
-    <button id="start_new_round_button">Start new round!</button>
-    <div id="resultsContainer" style="display: none;">
-        <h2>Drawings</h2>
-        <canvas id="resultCanvas"></canvas>
-    </div>
-    <div id="userList">
-        <!-- List all users -->
+    <h1>Drawful-Inspired Game</h1>
+    <div class="horizontal">
 
+        <div class="parent">
+            
+            <div class="left">
+                
+                <button id="start_new_round_button">Start new round!</button>
+                <div id="resultsContainer" style="display: none;">
+                    <h2>Drawings</h2>
+                    <canvas id="resultCanvas"></canvas>
+                </div>
+                <div id="userList">
+                    <!-- List all users -->
+                </div>
+            </div>
+            <div class="right">
+                
+            </div>
+        </div>
+    </div>
+    <div id="myProgress">
+        <div id="myBar"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
@@ -108,7 +149,8 @@
         });
         
 
-        socket.on('guess_on_image', async (id) => {
+        socket.on('guess_on_image', async (id,user,time) => {
+            setTimerBar(time);
             if (allCanvasData === undefined)
                 allCanvasData = await fetchCanvasData();
             resultCanvas = document.getElementById('resultCanvas');
@@ -184,6 +226,19 @@
                 // Handle the error appropriately, perhaps by displaying an error message to the user.
                 return null; // or throw error; or return empty array; depending on error handling
             }
+        }
+
+        function setTimerBar(duration) {
+            const bar = document.getElementById("myBar");
+            let width = 1;
+            const interval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(interval);
+                } else {
+                    width++;
+                    bar.style.width = width + "%";
+                }
+            }, duration / 100);
         }
     </script>
 </body>

@@ -176,6 +176,7 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
     const draw_time = 10000;
     const guess_time = 10000;
     const select_time = 10000;
+    const show_result_time = 10000;
 
     try {
         // Use map to create an array of promises, then await Promise.all
@@ -207,10 +208,9 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
         for (let i = 0; i < socket_ids.length; i++) {
             current_image_socketid = socket_ids[i];
             guess_storage[current_image_socketid] = {}
-            io.emit('guess_on_image', socket_ids[i])
-            // Old
-            //const user = user_names.find(user => user.socketId === socket_ids[i]);
             const user = user_names[socket_ids[i]];
+            io.emit('guess_on_image', socket_ids[i], user, guess_time)
+            
 
 
 
@@ -226,10 +226,17 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
             }
                 
             await sleep(guess_time);
+            guess_storage[current_image_socketid]['correct'] = prompts[i];
             const to_emit = guess_storage[current_image_socketid]
-            io.emit('select_guess_form', to_emit);
+            io.emit('select_guess_form', to_emit, user);
 
             await sleep(select_time);
+
+
+            await sleep(show_result_time);
+
+
+
         }
 
         res.sendStatus(200); // Send a success status

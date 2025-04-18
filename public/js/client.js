@@ -49,7 +49,7 @@ function createSelectResponseForm() {
 const selectGuessForm = createSelectResponseForm();
 const solutionList = document.getElementById('solution-list');
 
-
+let username = '';
 
 
 
@@ -128,8 +128,9 @@ const guessButton = document.getElementById('guess-button');
 
 function handleGuess () {
     guess = guessInput.value.trim();
-    if (username === "") {
-        alert("Indtast dit gæt"); // Basic validation
+    
+    if (guess === "") {
+        alert("Please enter a guess."); // Basic validation
         return;
     }
 
@@ -188,12 +189,12 @@ const loginButton = document.getElementById('login-button');
 //Rest of the code remains same
 // Function to handle user login
 function handleLogin() {
-    username = usernameInput.value.trim();
-    if (username === "") {
+    username_input = usernameInput.value.trim();
+    if (username_input === "") {
         alert("Please enter a username."); // Basic validation
         return;
     }
-
+    username = username_input;
     // Emit the username to the server
     socket.emit('submitName', username);
 
@@ -386,14 +387,24 @@ socket.on('connect', () => {
 socket.on('timeUp', () => {
     //alert('Time is up!');
 });
-socket.on('guess_on_image', () => {
-    switch_view('guess')
+socket.on('guess_on_image', (id, user, time) => {
+    if (user == username) {
+        switch_view('wait')
+    } else {
+
+        switch_view('guess')
+    }
 });
 
-socket.on('select_guess_form', (guesses) => {
+socket.on('select_guess_form', (guesses, user) => {
     console.log('Hello from select_guess_form')
-    populateSolutionList(guesses)
-    switch_view('select')
+    if (user == username) {
+        switch_view('wait')
+    } else {
+        populateSolutionList(guesses)
+        switch_view('select')
+    }
+    
 });
 
 socket.on('reset', () => {
