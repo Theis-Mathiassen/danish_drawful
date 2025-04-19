@@ -11,16 +11,18 @@ const io = socketIO(server);
 app.use(express.static('public'))
 
 //      /socket id of image / socket id of guess
-guess_storage = {}
+let guess_storage = {}
 //      /socket id of image / socket id of guess selected
-guessSelectedStorage = {}
+let guessSelectedStorage = {}
 
-drawingSubmitted = {}
+let user_scores = {}
+
+let drawingSubmitted = {}
 
 
-current_image_socketid = ''
+let current_image_socketid = ''
 
-host_socket_id = '';
+let host_socket_id = '';
 
 let current_sleep_timeout;
 let current_sleep_resolve;
@@ -40,124 +42,251 @@ let user_names = {}           // Store user name for each client using socket.id
 let socket_ids = []
 
 const draw_prompts = [
-    "En sovende kat drømmer en sommerfugls flugt.",
-    "Et æble falder i et spejl af nattehimlen.",
-    "En bil kører ind i en regnbue-tunnel.",
-    "Et fly lander på en flydende ø af krystaller.",
-    "Kaffe-dampe danner et stjernebillede.",
-    "En dør åbner til et vandfald af tid.",
-    "Regnbuens ende reflekteres i en dråbe honning.",
-    "Solen bærer månen som en hat.",
-    "Blad-fugle flyver fra en stjernespækket gren.",
-    "En bogside forvandles til en flod af ord.",
-    "En fugl bygger rede i et urværk.",
-    "Huset har et tag af blomster, der visker hemmeligheder.",
-    "Manden dirigerer skyer, der danser en historie.",
-    "Kvinden cykler på en regnbue, der tegner byen.",
-    "Bolden ruller op ad en bakke lavet af musiknoter.",
-    "Lampens lys kaster skygger af fremtidige minder.",
-    "Blomsten danser i måneskin, der spejler stjerner.",
-    "Ost flyver som en boomerang gennem et drømmelandskab.",
-    "Kagens lys synger en melodi af smeltende stjerner.",
-    "Ballonen bærer et hus gennem et maleri af skyer.",
-    "Frøen spiller guitar på en sten i en flydende sø.",
-    "Sommerfuglen drikker fra en glødende krystalblomst.",
-    "Citronen bliver til en midnatssol.",
-    "Skyen former sig som et ansigt, der griner af tiden.",
-    "Katten sniger sig gennem en by lavet af papirklip.",
-    "Bjørnen danser med træer, der udveksler hemmeligheder.",
-    "Musen styrer et rumskib, der laver ostemælkeveje.",
-    "Blomsten vokser i en vulkan, der spyr regnbuer.",
-    "Guleroden flyver med vinger af sommerfuglevinger.",
-    "Båden sejler på en flod af stjernestøv.",
-    "Træet har huse i grene lavet af drømme.",
-    "Cirklen hopper gennem en labyrint af spejle.",
-    "Trekanten flyver som et fly med vinger af papir.",
-    "Firkanten åbner sig som en bog med levende sider.",
-    "Stjernen falder som en regn af lysende fjer.",
-    "Månen danser med skyer, der ændrer form.",
-    "Paraplyer flyver i regnen som fugle med blade.",
-    "Skygger danser en ballet i sollyset.",
-    "Træerne laver musik med vinden som et kor.",
-    "Snefnug tegner historier i luften.",
-    "Is smelter og bliver til en flod af stjerner.",
-    "Te-dampe danner et landskab af drømme.",
-    "Saltkringle svømmer i et hav af sukkerkrystaller.",
-    "Slikkepinden flyver til månen med vinger af karamel.",
-    "Citronen griner, så bobler af lys flyder op.",
-    "Kaffe fortæller vittigheder, der smelter i munden.",
-    "Sneglen vinder et kapløb mod en bil på et spejl af lys.",
-    "Bilen danser i trafikken af drømme-biler.",
-    "Bjerget synger en melodi, der vækker stjerner.",
-    "Dalen er fyldt med blomster, der lyser som stjerner.",
-    "Floden har broer af regnbuer og huse af lys.",
-    "Stien fører til en by lavet af stjerner.",
-    "Manden flyver på en drage lavet af avissider.",
-    "Pigen tegner verden med stjerner, der danner byer.",
-    "Klovnen laver skygger af dyr med sine hænder som tegn.",
-    "Filmen bliver levende og fortæller historier.",
-    "Bogen forvandler læseren til sin hovedperson.",
-    "Skovens træer har huse lavet af blade og stjerner.",
-    "Byen danser til en musik af lysende skygger.",
-    "Tasken fylder sig selv med stjerner og minder.",
-    "Kufferten åbner sig og viser en miniature-verden.",
-    "Tallerkenen tegner billeder med mad som blæk.",
-    "Bilen laver rene spor af lys på en grusvej.",
-    "Kniven skærer gennem drømme og laver virkelighed.",
-    "Puden former sig som skyer og bærer drømme.",
-    "Stenen bliver blød som en sky og flyver.",
-    "Fjeren løfter en elefant op i luften med sin lethed.",
-    "Kassen flyver som en sommerfugl, der bærer stjerner.",
-    "Gaven indeholder en hel by lavet af lys.",
-    "Bogen fortæller historier på indersiden af siderne som film.",
-    "Lysets skygger danser som dyr i en drøm.",
-    "Lampen lyser i mørket med fantasiens lys.",
-    "Bilen tegner regnbuer på himlen som stier.",
-    "Sneglen bygger huse af stjerner på sin rute.",
-    "Lyden danner billeder i luften som hologrammer.",
-    "Stemmen tegner ansigter på skyerne med ord.",
-    "Himmelen danser med planeterne som lysende perler.",
-    "Skyerne fortæller historier med deres former som figurer.",
-    "Regndråber tegner billeder på vinduerne som penselstrøg.",
-    "Solens stråler tegner smil på blomster som magi.",
-    "Blomsten efterlader et aftryk af stjerner, når den visner.",
-    "Fuglen tegner mønstre i himlen med sine vinger.",
-    "Fisken laver bobler, der tegner historier i vandet.",
-    "Manden griner, så skyerne danner smilende ansigter.",
-    "Kvinden græder, så tårerne bliver til perler på græsset.",
-    "Barnet leger, så træerne danser i vinden.",
-    "Hunden gøer, så månen danser i takt med lydene.",
-    "Katten spinder, så stjernerne danser i harmoni.",
-    "Hesten løber, så skyerne følger som en lysende hale.",
-    "Koen græsser, så blomsterne vokser med farverige mønstre.",
-    "Grisen roder, så jorden danner mønstre af stjerner.",
-    "Hønen pikker, så æggene danser på jorden.",
-    "Anden svømmer, så lysspor danser i vandet.",
-    "Gåsen flyver, så stjerner danner en lysende sti.",
-    "Bien summer, så pollen tegner billeder i luften.",
-    "Myren kravler, så glitterspor lyser jorden op.",
-    "Edderkoppen fanger stjerner i sit spind som diamanter.",
-    "Sommerfuglen laver mønstre med sine vinger som lys.",
-    "Sneglen efterlader spor af perlemor som stjerner.",
-    "Ormen tegner mønstre med jord og blade som tegn.",
-    "Fuglen tegner flugtplaner på gulvet med sine fjer.",
-    "Fisken tegner historier med bobler i akvariet.",
-    "Katten tegner mønstre med garnnøgler i kurven.",
-    "Hunden tegner mønstre med poter i sandet ved stranden.",
-    "Aben tegner ansigter med bananer i trækronen.",
-    "Elefanten laver sandskulpturer med sin snabel.",
-    "Løven tegner mønstre med spor i sandet.",
-    "Tigeren laver mønstre med striber i skoven.",
-    "Bjørnen tegner mønstre med honning på klipperne.",
-    "Ulven tegner stjerner med sine øjne i natten.",
-    "Ræven tegner mønstre med halm på marken.",
-    "Haren tegner spor med sine poter i sneen.",
-    "Pindsvinet tegner cirkler i jorden med sine pigge.",
-    "Egernet tegner mønstre med nødder i træet.",
-    "Musen tegner spor med ost i sit hul.",
-    "Rotten tegner graffiti med kul i kloakken.",
-    "Frøen tegner mønstre med åkander i søen.",
-    "Slangen tegner mønstre med sine spor i græsset.",]
+    // Dyr
+  "Hurtig snegl",
+  "Ballet-elefant",
+  "Cyklist-bjørn",
+  "Stærk mus",
+  "Strikkende haj",
+  "LEGO-bæver",
+  "Motorcykel-orm",
+  "Faldskærms-and",
+  "Kramme-pindsvin",
+  "Travlt dovendyr",
+  "Post-kænguru",
+  "Væve-edderkop",
+  "Joke-papegøje",
+  "Gemmeleg-giraf",
+  "Hval i badekar",
+  "Dirigent-krabbe",
+  "Solbadende flodhest",
+  "Billøftende myre",
+  "Svedende isbjørn",
+  "Knude-slange",
+  "Glemsomt egern",
+  "Kamel med tre pukler",
+  "Frø på stylter",
+  "Harmonika-hund",
+  "Kat med støvler",
+  "Fisk på cykel",
+  "Ugle-bibliotekar",
+  "Hunde-drøm om kødben",
+  "Flyvende gris",
+  "Meget lang kat",
+  "Ridder på snegl",
+  "Abe på skøjter",
+  "Høne-tandlæge",
+  "Ko-astronaut",
+  "Surmulende guldfisk",
+  "Ninja-hamster",
+  "Hund jagter hale",
+  "Træklatrende elefant",
+  "Chokolade-gris",
+  "Måne-hoppende ko",
+  "Hest med briller",
+  "Menneske-tællende får",
+  "Telefon-skrællende abe",
+  "Muse-bange løve",
+  "Zebra-malende tiger",
+  "Pind-spisende panda",
+  "Brugtbil-sælgende ræv",
+  "Natkikkert-ugle",
+  "Mørkeræd flagermus",
+  "Flyvende pingvin",
+  "Bold-balancerende sæl",
+  "Stribe-vaskende zebra",
+  "Horn-pudsende næsehorn",
+  "Struds med hovedet i spand",
+  "Penge-vaskende vaskebjørn",
+
+  // Ting
+  "Vred tekande",
+  "Forvirret lyskryds",
+  "Løbende stol",
+  "Hviskende lampe",
+  "Forkølet computer",
+  "Nervøs brødrister",
+  "Lynlås-bjerg",
+  "Dansende robot",
+  "Knækket blyant",
+  "Trist ballon",
+  "Magisk flyvetæppe",
+  "Selv-ringende telefon",
+  "Strejkende vækkeur",
+  "Sladre-køleskab",
+  "Højtflyvende toast",
+  "Støv-bange støvsuger",
+  "Guld-vaskemaskine",
+  "Selv-klippende saks",
+  "Selv-slående hammer",
+  "Regn-bange paraply",
+  "Vildfaren nøgle",
+  "Pære med god idé",
+  "Tids-skruetrækker",
+  "Kedelig bog",
+  "Selv-malende pensel",
+  "Opera-syngende tandbørste",
+  "Vejr-kontrollerende fjernbetjening",
+  "Kage-søgende kompas",
+  "Snydende spillekort",
+  "Spidsfindig tegnestift",
+  "Selv-gyngende gynge",
+  "Gelé-rutsjebane",
+  "Hoppende trampolin",
+  "Konkurs sparegris",
+  "Surt klaver",
+  "Rock-violin",
+  "Én-tone fløjte",
+  "Selfie-kamera",
+  "Skændende værktøjskasse",
+  "Hammer-bange søm",
+  "Over-klistrende limstift",
+  "Lektie-spisende papirkurv",
+  "Hjemve-ramt globus",
+  "Baglæns-kikkert",
+  "Omvendt mikroskop",
+  "Fremtids-spejl",
+  "Baglæns-gående ur",
+  "Løgnagtig badevægt",
+  "Manglende puslespilsbrik",
+
+  // Mad
+  "Syngende sandwich",
+  "Sodavands-regn",
+  "Salat-bange agurk",
+  "Rødmende tomat",
+  "Ketchup-badende pomfrit",
+  "Grine-fremkaldende løg",
+  "Broccoli med ansigt",
+  "Selv-spisende pizza",
+  "Løbsk ost",
+  "Jordbær med overskæg",
+  "Elpære-formet pære",
+  "Kiks der griner",
+  "Smeltet chokolade-hjerte",
+  "Over-glade popcorn",
+  "Klogt kålhoved",
+  "Stirrende spejlæg",
+  "Vandmelon staver 'HJÆLP'",
+  "Grædende mælkekarton",
+  "Søvnløs kaffebønne",
+  "Hus-boende champignon",
+  "Hale-jagende hotdog",
+  "Trompet-spillende peberfrugt",
+  "Dansende gulerod",
+  "Meget sur citron",
+  "TV-kiggende kartoffel",
+
+  // Fantasy & Myter
+  "Smartphone-trold",
+  "Hornløs enhjørning",
+  "Havfrue i sko",
+  "Måne-bange varulv",
+  "Glemsom heks",
+  "Jogging-ridder",
+  "Drage-reddende prinsesse",
+  "Mørkeræd spøgelse",
+  "Fe uden tryllestøv",
+  "Tomatjuice-vampyr",
+  "Hjerne-søgende zombie",
+  "Ferie-nisse",
+  "Kyklop med kontaktlinser",
+  "Frysende yeti",
+  "Stor-have-gnom",
+  "Rulleskøjte-kentaur",
+  "Vittigheds-gargoil",
+  "Glemsom sfinks",
+  "Højdeskræk-pegasus",
+  "Kramme-kraken",
+  "Strikkende spøgelse",
+  "Usynlig mand",
+  "Monster under sengen",
+  "Hemmelighedsfuld dør",
+
+  // Natur & Vejr
+  "Firkantet regnbue",
+  "Torden på glas",
+  "Specielt snefnug",
+  "Sladrende vind",
+  "Op-ad-bakke flod",
+  "Flydende sten",
+  "Overfyldt oase",
+  "Kildende jordskælv",
+  "Musikalsk nordlys",
+  "Sjov tåge",
+  "Kiks-solformørkelse",
+  "Opad-smeltende istap",
+  "Surfende bølge",
+  "Nedgroende plante",
+  "Blød kaktus",
+  "Fremtids-vandpyt",
+  "Snorkende bjerg",
+  "Penge-fældende træ",
+  "Candyfloss-tornado",
+  "Chokomælks-gejser",
+  "Træ med ansigter",
+  "To lyn-kæmpende skyer",
+  "Møde-holdende træer",
+  "Limonade-vandfald",
+  "Popcorn-vulkan",
+  "Bortflydende ø",
+  "Hemmelig bogreol-gang",
+  "Dør-hus",
+  "Baglæns-by",
+  "Spaghetti-bro",
+  "Rutsje-regnbue",
+  "Stige til månen",
+  "Kendt sky-ansigt",
+  "Hviskende skov",
+  "Sukker-strand",
+  "Boblevands-sø",
+
+  // Mennesker & Abstrakt
+  "Måne-pandende astronaut",
+  "Pandekage-tabende kok",
+  "Tørst-slukkende brandmand",
+  "Nøgle-søgende betjent",
+  "Plante-lyttende læge",
+  "Gulerods-skrivende lærer",
+  "Selv-klippende frisør",
+  "Snegle-jaget postbud",
+  "Kiks-hus-bygger",
+  "Selvspillende instrument",
+  "Uheldig opfinder",
+  "Iøjnefaldende spion",
+  "Snegle-dommer",
+  "Papirfly-pilot",
+  "Sokke-detektiv",
+  "Popcorn-landmand",
+  "Råbende bibliotekar",
+  "Usynlig-kat-snublende tjener",
+  "Træ-krammende skovhugger",
+  "Plastik-vandende gartner",
+  "Skater-bedstemor",
+  "Mand taber hat",
+  "Kæmpestor kaffe",
+  "Vampyr-tandlæge",
+  "Bristende tankeboble",
+  "Forkert ekko",
+  "Flyvende idé",
+  "Larmende stilhed",
+  "Tiden løber ud",
+  "Langbenet løgn",
+  "Kærligheds-hik",
+  "Dårlig undskyldning",
+  "Heldigt uheld",
+  "Lørdags-mandag",
+  "Tvivlende spørgsmålstegn",
+  "Tung hemmelighed",
+  "Helt forkert vej",
+  "Deja-vu igen",
+  "Pludselig pære-idé",
+  "Gå i ring",
+  "Bogstavelig øjen-klap",
+  "Mistet strikke-tråd",
+  "Lille hvid løgn",
+  "Fanden malet på væggen"
+    ]
 
 
 function generateRandomSeed() {
@@ -173,10 +302,10 @@ function getRandomNumber(min, max) {
 
 
 app.get('/api/startround', async (req, res) => { // Make the handler async
-    const draw_time = 10000;
-    const guess_time = 10000;
-    const select_time = 10000;
-    const show_result_time = 10000;
+    const draw_time = 100000;
+    const guess_time = 60000;
+    const select_time = 60000;
+    const show_result_time = 15000;
 
     try {
         // Use map to create an array of promises, then await Promise.all
@@ -201,6 +330,7 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
         });
         
         console.log(`Round started with a ${draw_time / 1000} second timer.`);
+        io.to(host_socket_id).emit('time_bar', draw_time)
         await sleep(draw_time);
         io.emit('timeUp');
         console.log('Time is up! Emitting timeUp event.');
@@ -221,18 +351,48 @@ app.get('/api/startround', async (req, res) => { // Make the handler async
                 
             } else {
 
-                console.log('Guessing on image for user: ' + user.userName + 'with socket id: ' + user.socketId);
+                console.log('Guessing on image for user: ' + user + 'with socket id: ' + socket_ids[i]);
                 console.log('usernames: ' + user_names)
             }
-                
+            
+            io.to(host_socket_id).emit('time_bar', guess_time)
             await sleep(guess_time);
             guess_storage[current_image_socketid]['correct'] = prompts[i];
             const to_emit = guess_storage[current_image_socketid]
             io.emit('select_guess_form', to_emit, user);
 
+            io.to(host_socket_id).emit('time_bar', select_time)
             await sleep(select_time);
+            
+            socket_ids.forEach(id => {
+                if (current_image_socketid === id) {
+                    socket_ids.forEach(other_id => {
+                        if (other_id === id) {
+                            return;
+                        }
+                        if (guessSelectedStorage[current_image_socketid][other_id] === 'correct') {
+                            user_scores[id] += 500;
+                            user_scores[other_id] += 500;
+                        }
+                    });
+                } else {
+                    //guess_storage[current_image_socketid].forEach(guess => {
+                    //let guess = guess_storage[current_image_socketid][id];
+                    socket_ids.forEach(other_id => {
+                        if (other_id === id) {
+                            return;
+                        }
+                        if (id === guessSelectedStorage[current_image_socketid][other_id]) {
+                            user_scores[id] += 500;
+                        }
+                    });
+    
+                    //});
+                }
+            });
 
-
+            io.to(host_socket_id).emit('show_result', user_scores, user_names, socket_ids);
+            io.to(host_socket_id).emit('time_bar', show_result_time)
             await sleep(show_result_time);
 
 
@@ -316,6 +476,8 @@ io.on('connection', (socket) => {
         clientCanvasData[socket.id] = []; // Initialize an array for this client's data
         guess_storage[socket.id] = [];
         guessSelectedStorage[socket.id] = {};
+        drawingSubmitted[socket.id] = false;
+        user_scores[socket.id] = 0;
         socket_ids.push(socket.id);
         console.log('all sockets: ' + socket_ids);
     });
@@ -334,6 +496,8 @@ io.on('connection', (socket) => {
             io.to(host_socket_id).emit('users_changed', user_names)
             delete guess_storage[socket.id];
             delete guessSelectedStorage[socket.id];
+            delete user_scores[socket.id];
+            delete drawingSubmitted[socket.id];
         }
     });
 });
